@@ -1,11 +1,14 @@
 from django.contrib import admin
 from .models import OrderHistory
+from UserFunctions.models import User
 
 @admin.register(OrderHistory)
 class OrderHistoryAdmin(admin.ModelAdmin):
     # Fields to display in the list view
     list_display = (
         'order_id',
+        'get_username',  # New!
+        'get_usercode',  # New!
         'user_id',
         'order_time',
         'order_amount',
@@ -25,7 +28,9 @@ class OrderHistoryAdmin(admin.ModelAdmin):
 
     # Fields editable in the change view form
     fields = (
-        'user_id',
+        'get_username',  # New!
+        'get_usercode',  # New!
+        # 'user_id',
         'order_id',
         'payment_id',
         'order_time',
@@ -45,3 +50,17 @@ class OrderHistoryAdmin(admin.ModelAdmin):
     # def save_model(self, request, obj, form, change):
     #     # custom save logic if needed
     #     super().save_model(request, obj, form, change)
+
+    def get_username(self, obj):
+        try:
+            return User.objects.get(id=obj.user_id).name
+        except User.DoesNotExist:
+            return '-'
+    get_username.short_description = 'User Name'
+
+    def get_usercode(self, obj):
+        try:
+            return User.objects.get(id=obj.user_id).usercode
+        except User.DoesNotExist:
+            return '-'
+    get_usercode.short_description = 'User Code'
