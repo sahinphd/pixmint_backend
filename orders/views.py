@@ -19,16 +19,33 @@ def create_order(request):
     print(f"Data:: {data}")
     print(f"Data:: {data.get('user_id')}")
     raw_user_id = data.get('user_id')
-    price_amount = data.get('price_amount')
-    currency = data.get('pay_currency')
+    # Check for different possible field names for amount
+    price_amount = data.get('price_amount') or data.get('order_amount') or data.get('amount')
+    # Check for different possible field names for currency  
+    currency = data.get('pay_currency') or data.get('order_currency') or data.get('currency')
 
     if not raw_user_id:
         return Response({'error': 'user_id is required'}, status=400)
+    
+    if not price_amount:
+        return Response({
+            'error': 'amount field is required', 
+            'received_fields': list(data.keys()),
+            'note': 'Please send price_amount, order_amount, or amount field'
+        }, status=400)
+    
+    if not currency:
+        return Response({
+            'error': 'currency field is required',
+            'received_fields': list(data.keys()),
+            'note': 'Please send pay_currency, order_currency, or currency field'
+        }, status=400)
 
     try:
         user_id_int = int(raw_user_id)
-    except ValueError:
-        return Response({'error': 'user_id must be an integer'}, status=400)
+        price_amount = float(price_amount)  # Ensure price_amount is a valid number
+    except (ValueError, TypeError):
+        return Response({'error': 'user_id must be an integer and amount must be a valid number'}, status=400)
 
     # Secure query using mysql.connector
     config = settings.MYSQL_CONNECTOR_CONFIG
@@ -51,26 +68,29 @@ def create_order(request):
         
         print(f"to_serializer data {data}")
         order_id = f"{constantstring}{user_code}-{user_id_int}{datetime.now().strftime('%Y%m%d%H%M%S')}"
-        insert_query = f"""
-INSERT INTO `orders_orderhistory`
-(`user_id`, `order_id`,  `order_time`, `order_amount`, `order_currency`, 
-`order_status`)
-VALUES ({user_id_int}, '{order_id}', '{datetime.now().strftime('%Y-%m-%d')}', 
-{price_amount}, '{currency}', 'waiting');
+        
+        # Use parameterized query to avoid SQL injection and handle None values properly
+        insert_query = """
+        INSERT INTO `orders_orderhistory`
+        (`user_id`, `order_id`, `order_time`, `order_amount`, `order_currency`, `order_status`)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """
+        
+        insert_values = (
+            user_id_int, 
+            order_id, 
+            datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            price_amount, 
+            currency, 
+            'waiting'
+        )
 
-"""
-#         insert_query = f"""
-# INSERT INTO `spaceaius`.`orders_orderhistory`
-# (`user_id`, `order_id`,  `order_time`, `order_amount`, `order_currency`, 
-# `order_status`)
-# VALUES ({user_id_int}, '{order_id}',  '{datetime.now().strftime('%Y-%m-%d')}', 
-# {price_amount},'{currency}' , "waiting");
-# """
         print(f"Insert query: {insert_query}")
+        print(f"Insert values: {insert_values}")
         try:
             conn = mysql.connector.connect(**config)
             cursor = conn.cursor()
-            cursor.execute(insert_query)
+            cursor.execute(insert_query, insert_values)
             conn.commit()
             cursor.close()
             conn.close()
@@ -86,34 +106,48 @@ VALUES ({user_id_int}, '{order_id}', '{datetime.now().strftime('%Y-%m-%d')}',
         }
 
         # Set the payload (data)
-        data = {
+        payment_data = {
             "price_amount": price_amount,
             "price_currency": f"{settings.ORDER_CURRENCY}",
-            "pay_currency": f"{currency}",
+            "pay_currency": f"{currency.upper()}",  # Convert to uppercase for payment API
             "ipn_callback_url": f"{settings.IPN_URL}",
             "order_id": f"{order_id}",
             "order_description": "MY Order"
         }
-        print(f"Data to be sent: {data}")
+        print(f"Data to be sent: {payment_data}")
         try:
-            response = requests.post(paymentUrl, headers=headers, json=data)
-            print(f"Response status code: {response.json()}")
+            response = requests.post(paymentUrl, headers=headers, json=payment_data)
+            print(f"Response status code: {response.status_code}")
+            print(f"Response content: {response.text}")
+            
             if response.status_code == 201:
-                payment_data = response.json()
+                payment_response = response.json()
                 filtered_data = {
-                "payment_id": payment_data.get("payment_id"),
-                "payment_status": payment_data.get("payment_status"),
-                "pay_address": payment_data.get("pay_address"),
-                "price_amount": payment_data.get("price_amount"),
-                "price_currency": payment_data.get("price_currency"),
-                "pay_currency": payment_data.get("pay_currency"),
-                "order_id": payment_data.get("order_id")
+                "payment_id": payment_response.get("payment_id"),
+                "payment_status": payment_response.get("payment_status"),
+                "pay_address": payment_response.get("pay_address"),
+                "price_amount": payment_response.get("price_amount"),
+                "price_currency": payment_response.get("price_currency"),
+                "pay_currency": payment_response.get("pay_currency"),
+                "order_id": payment_response.get("order_id")
             }
                 # Optionally, you can log or manipulate the payment_data
-                print(f"Response: {payment_data}")
+                print(f"Response: {payment_response}")
                 return Response(filtered_data, status=status.HTTP_200_OK)
             else:
-                return Response({'error': 'Failed to create payment'}, status=response.status_code)
+                try:
+                    error_response = response.json()
+                    return Response({
+                        'error': 'Failed to create payment',
+                        'status_code': response.status_code,
+                        'payment_api_error': error_response
+                    }, status=response.status_code)
+                except:
+                    return Response({
+                        'error': 'Failed to create payment',
+                        'status_code': response.status_code,
+                        'payment_api_response': response.text
+                    }, status=response.status_code)
 
         except requests.RequestException as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -163,21 +197,16 @@ def total_amount_userwise(request):
         results = cursor.fetchall()
         cursor.close()
         conn.close()
-        print(f"Results: {results[0][1]}")
-        # total_amount = results[0] if results[0] is not None else 0
-        return Response({'total_amount': results[0][1]}, status=status.HTTP_200_OK)
 
-        # user_totals = {user_id: total_amount for user_id, total_amount in results}
-        # total_amount = result[0] if result[0] is not None else 0
-        # return Response({'total_amount': total_amount in results}, 
-        # return Response(user_totals, status=status.HTTP_200_OK)
+        user_totals = {user_id: total_amount for user_id, total_amount in results}
+        return Response(user_totals, status=status.HTTP_200_OK)
 
     except mysql.connector.Error as err:
         return Response({'error': str(err)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 
-# @api_view(['GET'])
-# def total_confirmed_order_amount(request):
-#     result = OrderHistory.objects.filter(order_status='confirmed').aggregate(total_amount=Sum('order_amount'))
-#     total_amount = result['total_amount'] or 0  # fallback to 0 if no records
-#     return Response({'total_confirmed_order_amount': total_amount})
+@api_view(['GET'])
+def total_confirmed_order_amount(request):
+    result = OrderHistory.objects.filter(order_status='confirmed').aggregate(total_amount=Sum('order_amount'))
+    total_amount = result['total_amount'] or 0  # fallback to 0 if no records
+    return Response({'total_confirmed_order_amount': total_amount})
