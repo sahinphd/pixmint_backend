@@ -4,4 +4,4 @@ from .models import Slab
 class SlabSerializer(serializers.ModelSerializer):
     class Meta:
         model = Slab
-        fields = ['id', 'slab_name', 'slab_percentage', 'activate_status']
+        fields = ['id', 'slab_name', 'slab_percentage', 'max_amount', 'activate_status']
