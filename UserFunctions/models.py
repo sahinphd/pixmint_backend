@@ -21,13 +21,41 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
+# class User(AbstractBaseUser):
+#     id = models.AutoField(primary_key=True)
+#     userid = models.CharField(max_length=100, unique=True)
+#     name = models.CharField(max_length=100)
+#     email = models.EmailField(unique=True)
+#     usercode = models.CharField(max_length=20, unique=True, blank=True, null=True)
+#     refarcode = models.CharField(max_length=20,  blank=True, null=True)
+#     is_active = models.BooleanField(default=True)
+#     is_admin = models.BooleanField(default=False)
+
+#     objects = UserManager()
+
+#     USERNAME_FIELD = 'userid'
+#     REQUIRED_FIELDS = ['name', 'email']
+
+#     def __str__(self):
+#         return self.usercode or self.userid
+
+#     def has_perm(self, perm, obj=None): return True
+#     def has_module_perms(self, app_label): return True
+#     @property
+#     def is_staff(self): return self.is_admin
+
 class User(AbstractBaseUser):
     id = models.AutoField(primary_key=True)
     userid = models.CharField(max_length=100, unique=True)
     name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
     usercode = models.CharField(max_length=20, unique=True, blank=True, null=True)
-    refarcode = models.CharField(max_length=20,  blank=True, null=True)
+    refarcode = models.CharField(max_length=20, blank=True, null=True)
+
+    # New field: acced_amount
+    # Adjust max_digits/decimal_places as needed for your domain.
+    acced_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
 
@@ -37,9 +65,10 @@ class User(AbstractBaseUser):
     REQUIRED_FIELDS = ['name', 'email']
 
     def __str__(self):
-        return self.userid
+        return self.usercode or self.userid
 
     def has_perm(self, perm, obj=None): return True
     def has_module_perms(self, app_label): return True
     @property
     def is_staff(self): return self.is_admin
+
