@@ -1,17 +1,6 @@
 from rest_framework import serializers
 from .models import OrderHistory
 
-# class OrderHistorySerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = OrderHistory
-#         # fields = '__all__'
-#         fields = [
-#             'user_id',
-#              'order_id', 'payment_id', 
-#             'order_time', 
-#             'pay_currency',  'order_log', 
-#             'payment_address', 'api_log'
-#         ]
 class OrderHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderHistory
