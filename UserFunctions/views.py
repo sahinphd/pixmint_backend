@@ -115,8 +115,6 @@ def user_hierarchy_by_userid(request):
 
     return Response(output, status=status.HTTP_200_OK)
 
-
-
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def change_password(request):
@@ -150,8 +148,6 @@ def change_password(request):
     user.save()
 
     return Response({"message": "Password changed successfully."}, status=status.HTTP_200_OK)
-
-
 
 def send_otp_email(recipient_email, otp):
     # otp = generate_otp()
@@ -226,11 +222,7 @@ def verify_otp(request):
 
     if cached["otp"] != input_otp:
         return Response({"error": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
-
-
     try:
-        
-
         # Clear the OTP cache after success
         cache.delete(f"student_otp_{email}")
 

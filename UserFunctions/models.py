@@ -54,7 +54,7 @@ class User(AbstractBaseUser):
 
     # New field: acced_amount
     # Adjust max_digits/decimal_places as needed for your domain.
-    acced_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True)
+    # acced_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0, null=True)
 
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
