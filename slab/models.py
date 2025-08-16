@@ -35,6 +35,7 @@ class EarningHistory(models.Model):
     earning_from = models.CharField(max_length=255)
     reason = models.TextField()
     datetime = models.DateTimeField(auto_now_add=True)
+    
 
     def __str__(self):
         return f"{self.user.usercode} - {self.earning_type} - {self.earning_amount} {self.currency}"
