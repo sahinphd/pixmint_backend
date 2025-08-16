@@ -5,6 +5,7 @@ from .models import Slab
 from .serializers import SlabSerializer
 from django.conf import settings
 import mysql.connector
+import json
 
 # Add new Slab
 @api_view(['POST'])
@@ -55,9 +56,40 @@ def self_calculation(userID):
         return Response({'error': str(err)}, status=500)
     
 
-@api_view(['POST'])
-def daily_income(request):
-    data = request.data.copy()
-    raw_user_id = data.get('user_id')
-    Result = self_calculation(raw_user_id)
+# @api_view(['POST'])
+# def daily_income(request):
+#     data = request.data.copy()
+#     raw_user_id = data.get('user_id')
+#     Result = self_calculation(raw_user_id)
 
+@api_view(['POST'])
+def earning_list_by_user(request):
+    # user_id = request.query_params.get('userID', None)  # Get from URL query params ?userID=123
+    user_id = request.data.get("user_id")
+    if not user_id:
+        return Response({"error": "userID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # earnings = Slab.objects.filter(user_id=user_id).order_by('-datetime')
+    # serializer = Slab(earnings, many=True)
+    # return Response(serializer.data)
+    config = settings.MYSQL_CONNECTOR_CONFIG
+
+    conn = mysql.connector.connect(**config)
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT datetime, earning_amount, currency, earning_from, reason, earning_type  FROM slab_earninghistory 
+                   WHERE user_id = %s
+
+        """, (user_id,) )
+    # results = cursor.fetchall()
+    # Get column names
+    columns = [desc[0] for desc in cursor.description]
+
+    # Fetch all rows and map with column names
+    results = cursor.fetchall()
+    data = [dict(zip(columns, row)) for row in results]
+
+    cursor.close()
+    conn.close()
+    
+    return Response(data, status=status.HTTP_200_OK)
