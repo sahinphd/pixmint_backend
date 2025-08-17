@@ -64,7 +64,6 @@ def self_calculation(userID):
 
 @api_view(['POST'])
 def earning_list_by_user(request):
-    # user_id = request.query_params.get('userID', None)  # Get from URL query params ?userID=123
     user_id = request.data.get("user_id")
     if not user_id:
         return Response({"error": "userID is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -78,6 +77,35 @@ def earning_list_by_user(request):
     cursor = conn.cursor()
     cursor.execute("""
     SELECT datetime, earning_amount, currency, earning_from, reason, earning_type  FROM slab_earninghistory 
+                   WHERE user_id = %s
+
+        """, (user_id,) )
+    # results = cursor.fetchall()
+    # Get column names
+    columns = [desc[0] for desc in cursor.description]
+
+    # Fetch all rows and map with column names
+    results = cursor.fetchall()
+    data = [dict(zip(columns, row)) for row in results]
+
+    cursor.close()
+    conn.close()
+    
+    return Response(data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def total_earning_by_user(request):
+    # user_id = request.query_params.get('userID', None)  # Get from URL query params ?userID=123
+    user_id = request.data.get("user_id")
+    if not user_id:
+        return Response({"error": "userID is required"}, status=status.HTTP_400_BAD_REQUEST)
+    config = settings.MYSQL_CONNECTOR_CONFIG
+
+    conn = mysql.connector.connect(**config)
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT sum(earning_amount) AS total_earning_amount  FROM slab_earninghistory 
                    WHERE user_id = %s
 
         """, (user_id,) )

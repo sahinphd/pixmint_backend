@@ -16,11 +16,18 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.contrib import admin
+
+admin.site.site_header = "PIXmintAI ADMIN"
+admin.site.site_title = "PIXmintAI"  # This changes the browser tab title
+admin.site.index_title = "PIXmintAI" # This is the main title on the index page
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('users/', include('UserFunctions.urls')),
-    path('payment/', include('paymentapp.urls')),
+    # path('payment/', include('paymentapp.urls')),
     path('orders/', include('orders.urls')),
     path('slab/', include('slab.urls')),
+    path('wallet/', include('wallet.urls')),
+    path('withdraw/', include('withdraw.urls')),
 ]

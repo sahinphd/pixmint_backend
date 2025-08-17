@@ -116,7 +116,7 @@ def user_hierarchy_by_userid(request):
     return Response(output, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+# @permission_classes([IsAuthenticated])
 def change_password(request):
     """
     Allows an authenticated user to change their password.

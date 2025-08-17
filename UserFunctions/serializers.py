@@ -2,7 +2,17 @@ from rest_framework import serializers
 from .models import User
 from datetime import datetime
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from slab.models import Slab
+from slab.models import UserSlab
 
+class SlabSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Slab
+        fields = ['id', 'slab_name', 'slab_percentage', 'max_amount', 'activate_status']
+        def get_slabs(self, obj):
+            user_slabs = UserSlab.objects.filter(user=obj)
+            return SlabSerializer([us.slab for us in user_slabs], many=True).data
+    
 class UserRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -46,6 +56,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['name'] = user.name
         token['usercode'] = user.usercode
         token['refarcode'] = user.refarcode
+        token['email'] = user.email
         return token
 
     def validate(self, attrs):
@@ -57,5 +68,10 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['name'] = self.user.name
         data['usercode'] = self.user.usercode
         data['refarcode'] = self.user.refarcode
+        data['email'] = self.user.email
+        
+        # Fetch slab_name from UserSlab model
+        user_slab = UserSlab.objects.filter(user=self.user).first()
+        data['slab_name'] = user_slab.slab.slab_name if user_slab else None
 
         return data
